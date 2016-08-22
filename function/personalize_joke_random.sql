@@ -1,5 +1,6 @@
 CREATE OR REPLACE FUNCTION personalize_joke_random(
-    replace_term VARCHAR
+    replace_term     VARCHAR,
+    parental_control BOOLEAN DEFAULT false
 ) RETURNS json AS $$
 
     SELECT
@@ -13,6 +14,12 @@ CREATE OR REPLACE FUNCTION personalize_joke_random(
     FROM
         joke AS j
     WHERE
+        CASE
+            WHEN personalize_joke_random.parental_control = true
+            THEN categories IS NOT NULL AND NOT (categories ?| array[ 'explicit' ])
+            ELSE true
+        END
+        AND
         j.value LIKE ('%Chuck Norris %')
         AND
         j.value NOT ILIKE ('% he %')
@@ -27,4 +34,4 @@ CREATE OR REPLACE FUNCTION personalize_joke_random(
 
 $$ LANGUAGE sql;
 
-COMMENT ON FUNCTION personalize_joke_random(varchar) IS 'Get a random personalized joke.';
+COMMENT ON FUNCTION personalize_joke_random(VARCHAR, BOOLEAN) IS 'Get a random personalized joke.';
