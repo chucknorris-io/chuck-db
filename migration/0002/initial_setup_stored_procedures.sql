@@ -17,7 +17,7 @@ BEGIN TRANSACTION;
 
     CREATE OR REPLACE FUNCTION delete_joke(
         joke_id SLUGID
-    ) RETURNS bigint AS $$  
+    ) RETURNS bigint AS $$
         WITH deletions AS (
             DELETE FROM joke WHERE joke_id = delete_joke.joke_id RETURNING 1
         )
@@ -25,7 +25,7 @@ BEGIN TRANSACTION;
     $$ LANGUAGE sql;
     COMMENT ON FUNCTION delete_joke(SLUGID) IS 'Delete a joke by a given joke id.';
 
-    CREATE OR REPLACE FUNCTION find_categories() RETURNS json AS $$ 
+    CREATE OR REPLACE FUNCTION find_categories() RETURNS json AS $$
         (SELECT array_to_json(array_agg(row_to_json(t))) FROM (
             SELECT
                 j.categories->>0 AS "name",
@@ -53,7 +53,7 @@ BEGIN TRANSACTION;
                 'createdAt',  j.created_at,
                 'updatedAt',  j.updated_at
             ) as joke
-            
+
         FROM
             joke AS j
         WHERE
@@ -141,12 +141,6 @@ BEGIN TRANSACTION;
     $$ LANGUAGE sql;
     COMMENT ON FUNCTION get_auth_provider(INTEGER) IS 'Get a auth provider by a given auth provider id.';
 
-    CREATE OR REPLACE FUNCTION get_first_joke(
-    ) RETURNS json AS $$
-        SELECT get_joke(joke_id) FROM joke LIMIT 1 OFFSET 0;
-    $$ LANGUAGE sql;
-    COMMENT ON FUNCTION get_first_joke() IS 'Get the first joke from the database.';
-
     CREATE OR REPLACE FUNCTION get_joke_by_value(
         "value" VARCHAR
     ) RETURNS json AS $$
@@ -179,46 +173,41 @@ BEGIN TRANSACTION;
     $$ LANGUAGE sql;
     COMMENT ON FUNCTION get_joke_random(VARCHAR) IS 'Get a random joke.';
 
-    CREATE OR REPLACE FUNCTION get_last_joke(
-    ) RETURNS json AS $$
-        SELECT
-            get_joke(joke_id)
-        FROM
-            joke
-        ORDER BY
-            created_at DESC
-        LIMIT
-            1
-        OFFSET
-            0;
-    $$ LANGUAGE sql;
-    COMMENT ON FUNCTION get_last_joke() IS 'Get the last joke from the database.';
-
     CREATE OR REPLACE FUNCTION get_joke_window_by_joke_id(
         joke_id SLUGID
     ) RETURNS json AS $$
+
+    WITH joke AS (
         SELECT
-            JSON_BUILD_OBJECT (
-                 'current',  get_joke(current),
-                 'next',     CASE WHEN next IS NULL
-                                 THEN get_first_joke()
-                                 ELSE get_joke(next)
-                            END,
-                'previous', CASE WHEN prev IS NULL
-                                 THEN get_last_joke()
-                                 ELSE get_joke(prev)
-                            END
-            )
-        FROM
-            (
-                SELECT
-                    joke_id AS current,
-                    lead (j.joke_id) OVER (ORDER BY j.created_at desc, j.joke_id ASC) AS next,
-                    lag  (j.joke_id) OVER (ORDER BY j.created_at desc, j.joke_id ASC) AS prev
-                FROM joke AS j
-            ) AS jokes
-        WHERE
-            get_joke_window_by_joke_id.joke_id IN (current, prev, next) LIMIT 1 OFFSET 1;
+            joke_id,
+            ROW_NUMBER () OVER (ORDER BY joke.created_at ASC, joke.joke_id ASC) AS row_number
+        FROM joke
+    ), current AS (
+        SELECT * FROM joke WHERE joke_id = get_joke_window_by_joke_id.joke_id LIMIT 1
+    ), prev AS (
+        SELECT
+          (CASE
+              WHEN (SELECT min(row_number) FROM joke) >= current.row_number - 1
+              THEN (SELECT joke_id FROM joke WHERE row_number = (SELECT max(row_number) FROM joke))
+              ELSE (SELECT joke_id FROM joke WHERE row_number = current.row_number - 1)
+          END) AS joke_id
+        FROM joke, current LIMIT 1
+    ), next AS (
+        SELECT
+          (CASE
+              WHEN (SELECT max(row_number) FROM joke) <= current.row_number + 1
+              THEN (SELECT joke_id FROM joke WHERE row_number = (SELECT min(row_number) FROM joke))
+              ELSE (SELECT joke_id FROM joke WHERE row_number = current.row_number + 1)
+          END) AS joke_id
+          FROM joke, current LIMIT 1
+    )
+    SELECT
+        JSON_BUILD_OBJECT (
+            'current',  get_joke(current.joke_id),
+            'next',     get_joke(next.joke_id),
+            'previous', get_joke(prev.joke_id)
+        )
+    FROM current, prev, next;
     $$ LANGUAGE sql;
     COMMENT ON FUNCTION get_joke_window_by_joke_id(SLUGID) IS 'Get a joke by a given id including the previous and next joke.';
 
