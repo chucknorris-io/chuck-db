@@ -1,0 +1,3 @@
+# Ignore /data directory, but include example dump
+data/
+!data/example.sql
