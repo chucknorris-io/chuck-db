@@ -10,6 +10,18 @@ This repository contains the database schema, stored procedures and migration fi
 
 ### Docker
 
+See [https://hub.docker.com/r/chucknorrisio/postgres](https://hub.docker.com/r/chucknorrisio/postgres).
+
+```sh
+# Run the latest version
+$ docker run -p '5432:5432' --name chucknorris-database chucknorrisio/postgres
+
+# Run a specific version (see https://hub.docker.com/r/chucknorrisio/postgres/tags)
+$ docker run -p '5432:5432' --name chucknorris-database chucknorrisio/postgres:9.6.13
+```
+
+### Local build
+
 ```sh
 # Build and run the container with the following make targets
 $ make build
@@ -20,6 +32,9 @@ $ make stop
 
 # Start an interactive psql session
 $ make connect
+
+# Push image to docker registry
+$ make release DOCKER_ACCOUNT=docker-account-name
 ```
 
 ## License
