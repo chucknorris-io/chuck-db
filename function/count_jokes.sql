@@ -1,6 +1,8 @@
-CREATE OR REPLACE FUNCTION count_jokes() RETURNS bigint AS $$
+CREATE OR REPLACE FUNCTION count_jokes() RETURNS bigint AS
+$$
 
-SELECT count(*) FROM joke;
+SELECT count(*)
+FROM joke;
 
 $$ LANGUAGE sql;
 

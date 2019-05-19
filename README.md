@@ -5,8 +5,22 @@ This repository contains the database schema, stored procedures and migration fi
 ## Usage
 
 * The `function/` directory contains always the latest version of the stored procedure.
-* The `migration/` directory contains all migration files in an hierarchical order.
+* The `migration/` directory contains all migration files in the order of execution.
 * The `schema/current.sql` file holds the latest version of the database schema.
+
+### Docker
+
+```sh
+# Build and run the container with the following make targets
+$ make build
+$ make run
+
+# Stop and remove the container
+$ make stop
+
+# Start an interactive psql session
+$ make connect
+```
 
 ## License
 
